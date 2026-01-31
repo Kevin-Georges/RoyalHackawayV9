@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live Speech To Text</title>
+  <style>
+    body { font-family: Arial; background:#0f172a; color:white; padding:40px }
+    button { padding:10px 20px; margin-right:10px; font-size:16px }
+    #transcript { margin-top:20px; line-height:1.6 }
+  </style>
+</head>
+<body>
+  <h1>Live Speech Transcription</h1>
+  <button id="start">Start</button>
+  <button id="stop">Stop</button>
+  <div id="status">Idle</div>
+  <div id="transcript"></div>
+
+<script>
+let socket;
+let audioContext;
+let processor;
+let input;
+let globalStream;
+
+const transcriptEl = document.getElementById("transcript");
+const statusEl = document.getElementById("status");
+
+function appendTranscript(text, isFinal) {
+  const span = document.createElement("div");
+  span.textContent = text;
+  span.style.color = isFinal ? "white" : "#38bdf8";
+  transcriptEl.appendChild(span);
+}
+
+document.getElementById("start").onclick = async () => {
+  statusEl.textContent = "Connecting...";
+  socket = new WebSocket("ws://localhost:8080");
+
+  socket.onopen = () => statusEl.textContent = "Recording...";
+  socket.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+    appendTranscript(data.transcript, data.isFinal);
+  };
+
+  globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  audioContext = new AudioContext({ sampleRate: 16000 });
+  input = audioContext.createMediaStreamSource(globalStream);
+  processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+  processor.onaudioprocess = (e) => {
+    const inputData = e.inputBuffer.getChannelData(0);
+    const pcmData = convertFloat32ToInt16(inputData);
+    if (socket.readyState === 1) socket.send(pcmData);
+  };
+
+  input.connect(processor);
+  processor.connect(audioContext.destination);
+};
+
+document.getElementById("stop").onclick = () => {
+  processor.disconnect();
+  input.disconnect();
+  globalStream.getTracks().forEach(t => t.stop());
+  socket.close();
+  statusEl.textContent = "Stopped";
+};
+
+function convertFloat32ToInt16(buffer) {
+  let l = buffer.length;
+  const buf = new Int16Array(l);
+  while (l--) buf[l] = Math.min(1, buffer[l]) * 0x7fff;
+  return buf.buffer;
+}
+</script>
+</body>
+</html>
