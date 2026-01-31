@@ -1,0 +1,26 @@
+{
+  "name": "live-audio-backend",
+  "version": "1.0.0",
+  "description": "WebSocket backend for receiving live audio chunks.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@deepgram/sdk": "^4.11.3",
+    "dotenv": "^17.2.3",
+    "ws": "^8.19.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kevin-Georges/RoyalHackawayV9.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Kevin-Georges/RoyalHackawayV9/issues"
+  },
+  "homepage": "https://github.com/Kevin-Georges/RoyalHackawayV9#readme"
+}
