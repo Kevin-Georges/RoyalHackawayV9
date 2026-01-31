@@ -1,0 +1,286 @@
+:root {
+  --bg: #0f1419;
+  --surface: #1a2332;
+  --border: #2d3a4d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.header h1 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0 0 0.75rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.api-status {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  display: inline-block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.api-status.ok {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.api-status.err {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+}
+
+.panel h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input[type="text"],
+textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+button {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button.secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
+
+.result-box {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  min-height: 2rem;
+}
+
+.result-box.success {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.result-box.error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.loading {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.hidden {
+  display: none;
+}
+
+.summary-content .field {
+  margin-bottom: 0.75rem;
+}
+
+.summary-content .label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.confidence-value {
+  font-size: 0.95rem;
+}
+
+.confidence-value .conf,
+.summary-content .conf {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-left: 0.25rem;
+  font-weight: normal;
+}
+
+.summary-content .value {
+  font-weight: 500;
+}
+
+.locations-list .location-item {
+  display: inline;
+}
+.locations-list .location-item:not(:last-child)::after {
+  content: ", ";
+}
+
+.map-panel .map-hint {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.map-panel .secondary {
+  margin-bottom: 1rem;
+}
+
+.map-container {
+  height: 320px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.map-container.leaflet-container {
+  font-family: inherit;
+}
+
+.device-location-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.device-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.device-marker .device-dot {
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border: 2px solid var(--text);
+  border-radius: 50%;
+  display: block;
+}
+
+.timeline-content ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline-content li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.timeline-content li:last-child {
+  border-bottom: none;
+}
+
+.timeline-content .event-time {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-right: 0.5rem;
+}
+
+.timeline-content .event-type {
+  font-weight: 500;
+  color: var(--accent);
+  margin-right: 0.35rem;
+}
+
+.timeline-content .event-value {
+  color: var(--text);
+}
+
+.timeline-content .event-conf {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-left: 0.35rem;
+}
+
+.timeline-content .event-source {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+}

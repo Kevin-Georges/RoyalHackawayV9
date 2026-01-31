@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incident Summary Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>Incident Summary</h1>
+      <p class="subtitle">Uncertainty-aware • Evidence only • No asserted facts</p>
+      <div class="api-status" id="api-status">Checking API…</div>
+    </header>
+
+    <main class="main">
+      <section class="panel ingest-panel">
+        <h2>Ingest transcript chunk</h2>
+        <form id="chunk-form">
+          <label for="incident-id">Incident ID</label>
+          <input type="text" id="incident-id" value="incident-001" placeholder="incident-001">
+          <label for="chunk-text">Transcript text</label>
+          <textarea id="chunk-text" rows="4" placeholder="e.g. there is a fire on the third floor"></textarea>
+          <div class="device-location-row">
+            <button type="button" id="use-my-location" class="secondary">Use my location</button>
+            <span id="device-location-status" class="device-status"></span>
+          </div>
+          <button type="submit" id="submit-chunk">Process chunk</button>
+        </form>
+        <div id="chunk-result" class="result-box"></div>
+      </section>
+
+      <section class="panel summary-panel">
+        <h2>Current summary</h2>
+        <div id="summary-loading" class="loading">Load an incident or process a chunk.</div>
+        <div id="summary-content" class="summary-content hidden">
+          <div class="field">
+            <span class="label">Incident ID</span>
+            <span id="sum-incident-id"></span>
+          </div>
+          <div class="field">
+            <span class="label">Last updated</span>
+            <span id="sum-last-updated"></span>
+          </div>
+          <div class="field">
+            <span class="label">Device location</span>
+            <span id="sum-device-location" class="confidence-value"></span>
+          </div>
+          <div class="field">
+            <span class="label">Locations (mentioned)</span>
+            <div id="sum-locations" class="confidence-value locations-list"></div>
+          </div>
+          <div class="field">
+            <span class="label">Incident type</span>
+            <span id="sum-incident-type" class="confidence-value"></span>
+          </div>
+          <div class="field">
+            <span class="label">People estimate</span>
+            <span id="sum-people" class="confidence-value"></span>
+          </div>
+          <div class="field">
+            <span class="label">Hazards</span>
+            <div id="sum-hazards" class="confidence-value locations-list"></div>
+          </div>
+          <button type="button" id="refresh-summary" class="secondary">Refresh</button>
+        </div>
+      </section>
+
+      <section class="panel map-panel">
+        <h2>Map (device + locations)</h2>
+        <p class="map-hint">Device location = caller position. Use &quot;Use my location&quot; then process a chunk, or &quot;Simulate locations&quot; for demo.</p>
+        <button type="button" id="simulate-locations" class="secondary">Simulate locations</button>
+        <div id="map" class="map-container"></div>
+      </section>
+
+      <section class="panel timeline-panel">
+        <h2>Timeline (audit log)</h2>
+        <div id="timeline-loading" class="loading">No timeline yet.</div>
+        <div id="timeline-content" class="timeline-content hidden">
+          <ul id="timeline-list"></ul>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
