@@ -19,8 +19,14 @@
       <section class="panel ingest-panel">
         <h2>Ingest transcript chunk</h2>
         <form id="chunk-form">
-          <label for="incident-id">Incident ID</label>
-          <input type="text" id="incident-id" value="incident-001" placeholder="incident-001">
+          <label class="checkbox-row">
+            <input type="checkbox" id="auto-cluster" title="Assign to best-matching incident or create new (embedding + LLM + time)" checked>
+            Auto-cluster reports (no incident ID needed)
+          </label>
+          <div id="incident-id-row" class="hidden">
+            <label for="incident-id">Incident ID</label>
+            <input type="text" id="incident-id" value="incident-001" placeholder="incident-001">
+          </div>
           <label for="chunk-text">Transcript text</label>
           <textarea id="chunk-text" rows="4" placeholder="e.g. there is a fire on the third floor"></textarea>
           <div class="device-location-row">
@@ -32,9 +38,20 @@
         <div id="chunk-result" class="result-box"></div>
       </section>
 
+      <section class="panel incidents-list-panel">
+        <div class="panel-head-row">
+          <h2>All incidents</h2>
+          <button type="button" id="refresh-incidents" class="secondary">Refresh list</button>
+        </div>
+        <p class="panel-hint">Click a card to view details.</p>
+        <div id="incidents-loading" class="loading">Loading…</div>
+        <div id="incidents-cards" class="incidents-cards hidden"></div>
+        <div id="incidents-empty" class="loading hidden">No incidents yet. Submit a transcript with auto-cluster on.</div>
+      </section>
+
       <section class="panel summary-panel">
-        <h2>Current summary</h2>
-        <div id="summary-loading" class="loading">Load an incident or process a chunk.</div>
+        <h2>Incident details</h2>
+        <div id="summary-loading" class="loading">Click an incident above or process a chunk.</div>
         <div id="summary-content" class="summary-content hidden">
           <div class="field">
             <span class="label">Incident ID</span>

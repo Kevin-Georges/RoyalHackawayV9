@@ -11,7 +11,12 @@
   const chunkForm = document.getElementById("chunk-form");
   const chunkText = document.getElementById("chunk-text");
   const incidentIdInput = document.getElementById("incident-id");
+  const autoClusterCheckbox = document.getElementById("auto-cluster");
+  const incidentIdRow = document.getElementById("incident-id-row");
   const chunkResult = document.getElementById("chunk-result");
+  const incidentsLoading = document.getElementById("incidents-loading");
+  const incidentsCards = document.getElementById("incidents-cards");
+  const incidentsEmpty = document.getElementById("incidents-empty");
   const summaryLoading = document.getElementById("summary-loading");
   const summaryContent = document.getElementById("summary-content");
   const refreshSummaryBtn = document.getElementById("refresh-summary");
@@ -36,7 +41,7 @@
     }).addTo(map);
   }
 
-  function updateMap(deviceLocation, locations) {
+  function updateMap(deviceLocation, locations, incidentType) {
     initMap();
     if (!map) return;
     mapMarkers.forEach(function (m) {
@@ -44,9 +49,10 @@
     });
     mapMarkers = [];
     var all = [];
+    var typeLabel = (incidentType && String(incidentType).trim()) ? (String(incidentType).charAt(0).toUpperCase() + String(incidentType).slice(1).toLowerCase()) : "Incident";
     if (deviceLocation && deviceLocation.lat != null && deviceLocation.lng != null && !isNaN(deviceLocation.lat) && !isNaN(deviceLocation.lng)) {
-      var devMarker = L.marker([deviceLocation.lat, deviceLocation.lng], { icon: L.divIcon({ className: "device-marker", html: "<span class=\"device-dot\"></span>", iconSize: [20, 20] }) }).addTo(map);
-      devMarker.bindPopup("<strong>Device</strong> " + (deviceLocation.confidence != null ? "(" + Number(deviceLocation.confidence).toFixed(2) + ")" : ""));
+      var devMarker = L.marker([deviceLocation.lat, deviceLocation.lng]).addTo(map);
+      devMarker.bindPopup("<strong class=\"map-popup-header\">" + escapeHtml(typeLabel) + "</strong>" + (deviceLocation.confidence != null ? " <span class=\"conf\">(" + Number(deviceLocation.confidence).toFixed(2) + ")</span>" : ""));
       mapMarkers.push(devMarker);
       all.push([deviceLocation.lat, deviceLocation.lng]);
     }
@@ -74,6 +80,96 @@
   }
 
   var fetchOpts = { cache: "no-store" };
+
+  function toggleIncidentIdRow() {
+    if (!incidentIdRow) return;
+    if (autoClusterCheckbox && autoClusterCheckbox.checked) {
+      incidentIdRow.classList.add("hidden");
+    } else {
+      incidentIdRow.classList.remove("hidden");
+    }
+  }
+
+  function cardPreview(summary) {
+    if (!summary) return "";
+    var parts = [];
+    if (summary.incident_type && summary.incident_type.value) {
+      parts.push(summary.incident_type.value);
+    }
+    if (summary.locations && summary.locations.length) {
+      parts.push(summary.locations.map(function (l) { return l.value; }).join(", "));
+    }
+    if (summary.last_updated) {
+      parts.push(summary.last_updated.replace("T", " ").slice(0, 19));
+    }
+    return parts.join(" · ") || "—";
+  }
+
+  function renderIncidentCards(incidentsList) {
+    if (!incidentsCards) return;
+    if (!incidentsList || incidentsList.length === 0) {
+      incidentsCards.classList.add("hidden");
+      if (incidentsEmpty) {
+        incidentsEmpty.classList.remove("hidden");
+        incidentsEmpty.textContent = "No incidents yet. Submit a transcript with auto-cluster on.";
+      }
+      return;
+    }
+    incidentsCards.innerHTML = incidentsList.map(function (item) {
+      var id = item.incident_id || "";
+      var sum = item.summary || {};
+      var preview = cardPreview(sum);
+      var typeLabel = sum.incident_type && sum.incident_type.value ? escapeHtml(sum.incident_type.value) : "—";
+      var timelineCount = sum.timeline_count != null ? sum.timeline_count : (sum.timeline ? sum.timeline.length : 0);
+      return (
+        "<div class=\"incident-card\" data-incident-id=\"" + escapeHtml(id) + "\" role=\"button\" tabindex=\"0\">" +
+        "<div class=\"incident-card-id\">" + escapeHtml(id) + "</div>" +
+        "<div class=\"incident-card-type\">" + typeLabel + "</div>" +
+        "<div class=\"incident-card-preview\">" + escapeHtml(preview) + "</div>" +
+        "<div class=\"incident-card-meta\">" + timelineCount + " event(s) · " + (sum.last_updated || "—") + "</div>" +
+        "</div>"
+      );
+    }).join("");
+    incidentsCards.classList.remove("hidden");
+    if (incidentsEmpty) incidentsEmpty.classList.add("hidden");
+    incidentsCards.querySelectorAll(".incident-card").forEach(function (card) {
+      card.addEventListener("click", function () {
+        var id = card.getAttribute("data-incident-id");
+        if (!id) return;
+        incidentsCards.querySelectorAll(".incident-card").forEach(function (c) { c.classList.remove("selected"); });
+        card.classList.add("selected");
+        if (incidentIdInput) incidentIdInput.value = id;
+        loadIncident(id).then(function (d) {
+          if (d) {
+            loadTimeline(id);
+            updateMap(d.device_location, d.locations || []);
+          }
+        });
+      });
+    });
+  }
+
+  async function loadIncidentsList() {
+    if (!incidentsLoading || !incidentsCards) return;
+    incidentsLoading.classList.remove("hidden");
+    incidentsCards.classList.add("hidden");
+    if (incidentsEmpty) incidentsEmpty.classList.add("hidden");
+    try {
+      var url = apiUrl("/incidents?summaries=true&_=" + Date.now());
+      const r = await fetch(url, { cache: "no-store", headers: { Pragma: "no-cache" } });
+      if (!r.ok) throw new Error("Failed to load incidents");
+      const data = await r.json();
+      var list = data.incidents || [];
+      renderIncidentCards(list);
+    } catch (e) {
+      if (incidentsEmpty) {
+        incidentsEmpty.textContent = "Could not load incidents: " + e.message;
+        incidentsEmpty.classList.remove("hidden");
+      }
+    } finally {
+      incidentsLoading.classList.add("hidden");
+    }
+  }
 
   async function checkHealth() {
     try {
@@ -123,7 +219,43 @@
     }
     summaryLoading.classList.add("hidden");
     summaryContent.classList.remove("hidden");
-    updateMap(data.device_location, data.locations || []);
+    var incType = data.incident_type && data.incident_type.value ? data.incident_type.value : null;
+    updateMap(data.device_location, data.locations || [], incType);
+    renderTranscripts(data.timeline || []);
+  }
+
+  function uniqueCallersFromTimeline(timeline) {
+    if (!timeline || !timeline.length) return [];
+    var byText = {};
+    timeline.forEach(function (e) {
+      var st = (e.source_text && e.source_text.trim()) || "";
+      if (!st) return;
+      if (!byText[st]) byText[st] = { time: e.time, source_text: st };
+    });
+    var list = Object.keys(byText).map(function (k) { return byText[k]; });
+    list.sort(function (a, b) { return (a.time || "").localeCompare(b.time || ""); });
+    return list;
+  }
+
+  function renderTranscripts(timeline) {
+    var section = document.getElementById("transcripts-section");
+    var listEl = document.getElementById("transcripts-list");
+    if (!section || !listEl) return;
+    var callers = uniqueCallersFromTimeline(timeline);
+    if (callers.length === 0) {
+      section.classList.add("hidden");
+      return;
+    }
+    section.classList.remove("hidden");
+    listEl.innerHTML = callers.map(function (c, i) {
+      var timeLabel = (c.time || "").replace("T", " ").slice(0, 19);
+      return (
+        "<div class=\"caller-card\">" +
+        "<div class=\"caller-header\">Caller " + (i + 1) + (timeLabel ? " · " + escapeHtml(timeLabel) : "") + "</div>" +
+        "<div class=\"caller-transcript\">" + escapeHtml(c.source_text) + "</div>" +
+        "</div>"
+      );
+    }).join("");
   }
 
   function renderTimeline(data) {
@@ -185,6 +317,24 @@
     }
   }
 
+  function getCurrentLocationAsync() {
+    return new Promise(function (resolve) {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        function () {
+          resolve(null);
+        },
+        { timeout: 5000, maximumAge: 0, enableHighAccuracy: false }
+      );
+    });
+  }
+
   chunkForm.addEventListener("submit", async function (e) {
     e.preventDefault();
     const text = chunkText.value.trim();
@@ -197,10 +347,23 @@
     chunkResult.textContent = "Processing…";
     chunkResult.className = "result-box";
     try {
-      var payload = { text: text, incident_id: incidentId };
-      if (deviceLat != null && deviceLng != null) {
-        payload.device_lat = deviceLat;
-        payload.device_lng = deviceLng;
+      var autoCluster = !!(autoClusterCheckbox && autoClusterCheckbox.checked);
+      var lat = deviceLat;
+      var lng = deviceLng;
+      if (autoCluster) {
+        var fresh = await getCurrentLocationAsync();
+        if (fresh) {
+          lat = fresh.lat;
+          lng = fresh.lng;
+          deviceLat = lat;
+          deviceLng = lng;
+          if (deviceLocationStatus) deviceLocationStatus.textContent = "Location used for clustering.";
+        }
+      }
+      var payload = { text: text, incident_id: autoCluster ? "" : incidentId, auto_cluster: autoCluster };
+      if (lat != null && lng != null) {
+        payload.device_lat = lat;
+        payload.device_lng = lng;
       }
       const r = await fetch(apiUrl("/chunk"), {
         method: "POST",
@@ -218,11 +381,28 @@
       if (data.claims_added === 0 && data.summary && data.summary.timeline_count > 0) {
         msg = "No new claims from this chunk (extractor may have fallen back). Summary unchanged.";
       }
+      if (data.cluster_score != null) {
+        msg += " Match score: " + Number(data.cluster_score).toFixed(2);
+        if (data.cluster_new) msg += " (new incident)";
+        else msg += " (assigned to existing)";
+      }
       chunkResult.textContent = msg;
       chunkResult.className = "result-box success";
+      if (data.incident_id && incidentIdInput) {
+        incidentIdInput.value = data.incident_id;
+      }
       renderSummary(data.summary);
       renderTimeline({ timeline: data.summary.timeline });
       chunkText.value = "";
+      loadIncidentsList().then(function () {
+        var card = incidentsCards && incidentsCards.querySelector(".incident-card[data-incident-id=\"" + (data.incident_id || "") + "\"]");
+        if (card) {
+          incidentsCards.querySelectorAll(".incident-card").forEach(function (c) { c.classList.remove("selected"); });
+          card.classList.add("selected");
+        }
+      }).catch(function (err) {
+        console.error("Refresh incidents list failed:", err);
+      });
     } catch (err) {
       chunkResult.textContent = "Error: " + err.message;
       chunkResult.className = "result-box error";
@@ -286,15 +466,21 @@
     }
   });
 
+  if (autoClusterCheckbox) {
+    autoClusterCheckbox.addEventListener("change", toggleIncidentIdRow);
+  }
+  toggleIncidentIdRow();
+
+  var refreshIncidentsBtn = document.getElementById("refresh-incidents");
+  if (refreshIncidentsBtn) {
+    refreshIncidentsBtn.addEventListener("click", function () {
+      loadIncidentsList();
+    });
+  }
+
   checkHealth().then(function (ok) {
     if (ok) {
-      const id = incidentIdInput.value.trim() || "incident-001";
-      loadIncident(id).then(function (d) {
-        if (d) {
-          loadTimeline(id);
-          updateMap(d.device_location, d.locations || []);
-        }
-      });
+      loadIncidentsList();
     }
   });
 })();

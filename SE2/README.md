@@ -37,9 +37,20 @@ Tests cover: core models (ConfidenceValue, LocationValue, Incident), Bayesian po
 - Dashboard: http://localhost:8000/dashboard/  
 - Health: http://localhost:8000/health  
 
+## Clustering (dynamic incident assignment)
+
+Reports can be **clustered** into incidents so multiple calls form one incident when they refer to the same event. Enable with `auto_cluster: true` on **POST /chunk**.
+
+- **Embedding similarity**: Report and incident summaries (including device_geo when present) are embedded; cosine similarity contributes so "first floor" and "windsor building" from the same coords cluster.
+- **LLM same-incident score**: An LLM scores how likely the report describes the same incident (0–1).
+- **Time proximity**: Reports close in time score higher (same hour → 1.0, 6h → 0.8, 24h → 0.6, 7d → 0.3, else 0.1).
+- **Geo proximity**: When device lat/lng is sent with the chunk, distance to the incident's device/location is used (same spot → 1.0, within 200m → 0.9, 500m → 0.7, 1km → 0.5, 2km → 0.3, else 0.1). So reports from the same building cluster even if one says "first floor" and another "windsor building".
+
+Combined score = `0.35 * embedding_sim + 0.35 * llm_score + 0.15 * time_score + 0.15 * geo_score`. Send `device_lat` and `device_lng` with **POST /chunk** (dashboard requests location each time when auto-cluster is on). If the best score ≥ 0.55, the report is assigned to that incident; otherwise a new incident is created.
+
 ## API
 
-- **POST /chunk** — Ingest a transcript chunk. Body: `{ "text": "...", "incident_id": "incident-001" }`. Returns updated summary and claims added.
+- **POST /chunk** — Ingest a transcript chunk. Body: `{ "text": "...", "incident_id": "incident-001", "auto_cluster": false }`. If `auto_cluster` is true, the report is assigned to the best-matching incident or a new one is created. Returns `cluster_score` and `cluster_new` when clustering is used.
 - **GET /incident/{incident_id}** — Full incident state (summary + timeline).
 - **GET /incident/{incident_id}/timeline** — Timeline only.
 - **GET /incidents** — List incident IDs.

@@ -24,6 +24,11 @@ from core.engine import apply_claims, get_incident_state_dict, add_demo_location
 from extractors.regex_extractor import extract_claims as regex_extract_claims
 from extractors.openai_extractor import extract_claims as openai_extract_claims
 from extractors.judge import judge_support_scores
+from clustering.assigner import (
+    claims_to_summary_text,
+    find_best_incident,
+    new_incident_id,
+)
 
 load_dotenv(override=True)
 
@@ -41,6 +46,8 @@ logger = logging.getLogger("incident_api")
 # Store (in-memory; one incident per id for MVP)
 # -----------------------------------------------------------------------------
 incidents: dict[str, Incident] = {}
+# Cache incident embeddings for clustering (invalidated when incident is updated)
+incident_embedding_cache: dict[str, list[float]] = {}
 
 
 def get_extractor():
@@ -142,12 +149,15 @@ class ChunkRequest(BaseModel):
     incident_id: str = "incident-001"
     device_lat: Optional[float] = None
     device_lng: Optional[float] = None
+    auto_cluster: bool = False  # if True, assign to best-matching incident or create new (embedding + LLM + time)
 
 
 class ChunkResponse(BaseModel):
     incident_id: str
     summary: dict
     claims_added: int
+    cluster_score: Optional[float] = None  # set when auto_cluster=True (combined match score)
+    cluster_new: Optional[bool] = None  # True if this report created a new incident
 
 
 # -----------------------------------------------------------------------------
@@ -162,11 +172,13 @@ NO_CACHE_HEADERS = {"Cache-Control": "no-store, no-cache, must-revalidate", "Pra
 @app.post("/chunk", response_model=ChunkResponse)
 def process_chunk(body: ChunkRequest):
     """Ingest a transcript chunk; run extraction and update incident state. Probabilities are merged (updatable)."""
-    incident_id = body.incident_id or "incident-001"
     text = (body.text or "").strip()
     text_preview = (text[:80] + "…") if len(text) > 80 else text
+    cluster_score: Optional[float] = None
+    cluster_new: Optional[bool] = None
 
-    logger.info("chunk received incident_id=%s text_len=%d preview=%r", incident_id, len(text), text_preview or "(empty)")
+    logger.info("chunk received incident_id=%s auto_cluster=%s text_len=%d preview=%r",
+                body.incident_id, body.auto_cluster, len(text), text_preview or "(empty)")
 
     if not text:
         logger.warning("chunk rejected: empty text")
@@ -175,6 +187,45 @@ def process_chunk(body: ChunkRequest):
             content={"detail": "text is required and cannot be empty"},
             headers=NO_CACHE_HEADERS,
         )
+
+    incident_id = body.incident_id or "incident-001"
+
+    if body.auto_cluster:
+        # Assign to best-matching incident or create new (embedding + LLM + time)
+        from datetime import datetime
+        extract_fn = get_extractor()
+        quick_claims = extract_fn(body.text, context=None)
+        if not quick_claims and extract_fn is openai_extract_claims:
+            quick_claims = regex_extract_claims(body.text, context=None)
+        report_summary = claims_to_summary_text(
+            quick_claims,
+            chunk_preview=text[:200],
+            device_lat=float(body.device_lat) if body.device_lat is not None else None,
+            device_lng=float(body.device_lng) if body.device_lng is not None else None,
+        )
+        report_time_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        incident_entries = [
+            (iid, get_incident_state_dict(inc), inc.last_updated)
+            for iid, inc in incidents.items()
+        ]
+        best_id, score = find_best_incident(
+            report_summary,
+            report_time_iso,
+            incident_entries,
+            report_lat=float(body.device_lat) if body.device_lat is not None else None,
+            report_lng=float(body.device_lng) if body.device_lng is not None else None,
+            embedding_cache=incident_embedding_cache,
+        )
+        cluster_score = round(score, 4)
+        if best_id is not None:
+            incident_id = best_id
+            cluster_new = False
+            logger.info("cluster assigned to incident_id=%s score=%s", incident_id, cluster_score)
+        else:
+            incident_id = new_incident_id()
+            incidents[incident_id] = Incident(incident_id=incident_id)
+            cluster_new = True
+            logger.info("cluster created new incident_id=%s score=%s", incident_id, cluster_score)
 
     if incident_id not in incidents:
         incidents[incident_id] = Incident(incident_id=incident_id)
@@ -209,16 +260,21 @@ def process_chunk(body: ChunkRequest):
     claims_added = n_after - n_before
     summary = get_incident_state_dict(incident)
 
+    # Invalidate embedding cache for this incident so next clustering uses updated summary
+    incident_embedding_cache.pop(incident_id, None)
+
     logger.info("chunk applied incident_id=%s claims_added=%d timeline_len=%d", incident_id, claims_added, n_after)
 
-    return JSONResponse(
-        content=ChunkResponse(
-            incident_id=incident_id,
-            summary=summary,
-            claims_added=claims_added,
-        ).model_dump(),
-        headers=NO_CACHE_HEADERS,
-    )
+    resp_content = ChunkResponse(
+        incident_id=incident_id,
+        summary=summary,
+        claims_added=claims_added,
+    ).model_dump()
+    if cluster_score is not None:
+        resp_content["cluster_score"] = cluster_score
+    if cluster_new is not None:
+        resp_content["cluster_new"] = cluster_new
+    return JSONResponse(content=resp_content, headers=NO_CACHE_HEADERS)
 
 
 @app.get("/incident/{incident_id}")
@@ -264,9 +320,16 @@ def post_demo_locations(incident_id: str):
 
 
 @app.get("/incidents")
-def list_incidents():
-    """List known incident IDs."""
-    return JSONResponse(content={"incident_ids": list(incidents.keys())}, headers=NO_CACHE_HEADERS)
+def list_incidents(summaries: bool = False):
+    """List known incidents. If summaries=true, returns full summary per incident for dashboard cards."""
+    ids = list(incidents.keys())
+    if not summaries:
+        return JSONResponse(content={"incident_ids": ids}, headers=NO_CACHE_HEADERS)
+    out = [
+        {"incident_id": iid, "summary": get_incident_state_dict(incidents[iid])}
+        for iid in ids
+    ]
+    return JSONResponse(content={"incident_ids": ids, "incidents": out}, headers=NO_CACHE_HEADERS)
 
 
 @app.get("/health")
