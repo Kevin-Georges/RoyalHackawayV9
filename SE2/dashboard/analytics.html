@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Snowflake Analytics | SE2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" crossorigin="anonymous"></script>
@@ -13,15 +16,20 @@
 <body>
   <div class="app analytics-app">
     <header class="header">
-      <h1>Snowflake Analytics</h1>
-      <p class="subtitle">Live analytics from Snowflake • VARIANT, DATE_TRUNC, QUALIFY, LAG, GET_PATH</p>
-      <div class="header-actions">
-        <a href="index.html" class="link-back">← Incident dashboard</a>
-        <span id="analytics-status" class="api-status">Loading…</span>
+      <div class="header-inner">
+        <h1>Snowflake Analytics</h1>
+        <div class="header-actions">
+          <a href="index.html" class="nav-btn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Dashboard
+          </a>
+          <span id="analytics-status" class="api-status">Loading…</span>
+        </div>
       </div>
+      <p class="subtitle">Live analytics from Snowflake • VARIANT, DATE_TRUNC, QUALIFY, LAG, GET_PATH</p>
     </header>
 
-    <main class="main analytics-main">
+    <main class="main analytics-main" style="margin-top:0.5rem">
       <section class="panel kpi-panel">
         <h2>KPIs</h2>
         <div id="kpi-cards" class="kpi-cards"></div>

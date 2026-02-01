@@ -3,123 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Incident Summary Dashboard</title>
+  <title>Incident Dashboard | SE2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app">
+  <div class="app dashboard-app">
     <header class="header">
-      <h1>Incident Summary</h1>
-      <p class="subtitle">Uncertainty-aware • Evidence only • No asserted facts <a href="analytics.html" class="link-analytics">Snowflake Analytics →</a></p>
-      <div class="api-status" id="api-status">Checking API…</div>
+      <div class="header-inner">
+        <h1>Incident Dashboard</h1>
+        <div class="header-actions">
+          <a href="call.html" class="nav-btn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Call
+          </a>
+          <a href="analytics.html" class="nav-btn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Analytics
+          </a>
+          <span id="api-status" class="api-status">Checking…</span>
+        </div>
+      </div>
     </header>
 
-    <main class="main">
-      <section class="panel voice-panel">
-        <h2>Live voice transcription</h2>
-        <p class="panel-hint">Start recording to add transcripts via speech. Every ~3 sentences are sent to the semantic engine and incidents update in real time. Each session (Start→Stop) = one caller.</p>
-        <div class="voice-controls">
-          <button type="button" id="voice-start" class="primary">Start recording</button>
-          <button type="button" id="voice-stop" class="secondary" disabled>Stop</button>
-          <span id="voice-status" class="voice-status">Idle</span>
-          <span id="voice-caller" class="voice-caller hidden"></span>
-        </div>
-        <div id="voice-live" class="voice-live" aria-live="polite"></div>
-        <div id="voice-transcript" class="voice-transcript"></div>
-      </section>
-
-      <section class="panel ingest-panel">
-        <h2>Ingest transcript chunk</h2>
-        <p class="panel-hint" style="margin-bottom:0.5rem">Or <strong>Simulate incidents</strong> to seed demo data (fire, medical, assault, gas leak) with locations for the map and Snowflake analytics.</p>
-        <button type="button" id="simulate-incidents" class="secondary" style="margin-bottom:1rem">Simulate incidents</button>
-        <form id="chunk-form">
-          <label class="checkbox-row">
-            <input type="checkbox" id="auto-cluster" title="Assign to best-matching incident or create new (embedding + LLM + time)" checked>
-            Auto-cluster reports (no incident ID needed)
-          </label>
-          <div id="incident-id-row" class="hidden">
-            <label for="incident-id">Incident ID</label>
-            <input type="text" id="incident-id" value="incident-001" placeholder="incident-001">
-          </div>
-          <label for="chunk-text">Transcript text</label>
-          <textarea id="chunk-text" rows="4" placeholder="e.g. there is a fire on the third floor"></textarea>
-          <div class="device-location-row">
-            <button type="button" id="use-my-location" class="secondary">Use my location</button>
-            <span id="device-location-status" class="device-status"></span>
-          </div>
-          <button type="submit" id="submit-chunk">Process chunk</button>
-        </form>
-        <div id="chunk-result" class="result-box"></div>
-      </section>
-
-      <section class="panel incidents-list-panel">
-        <div class="panel-head-row">
-          <h2>All incidents</h2>
-          <button type="button" id="refresh-incidents" class="secondary">Refresh list</button>
-        </div>
-        <p class="panel-hint">Click a card to view details.</p>
-        <div id="incidents-loading" class="loading">Loading…</div>
-        <div id="incidents-cards" class="incidents-cards hidden"></div>
-        <div id="incidents-empty" class="loading hidden">No incidents yet. Submit a transcript with auto-cluster on.</div>
-      </section>
-
-      <section class="panel summary-panel">
-        <h2>Incident details</h2>
-        <p class="panel-hint">Click an incident card above to see summary, transcripts, and timeline.</p>
-        <div id="summary-loading" class="loading">Click an incident above or process a chunk.</div>
-        <div id="summary-content" class="summary-content hidden">
-          <div class="field">
-            <span class="label">Incident ID</span>
-            <span id="sum-incident-id"></span>
-          </div>
-          <div class="field">
-            <span class="label">Last updated</span>
-            <span id="sum-last-updated"></span>
-          </div>
-          <div class="field">
-            <span class="label">Device location</span>
-            <span id="sum-device-location" class="confidence-value"></span>
-          </div>
-          <div class="field">
-            <span class="label">Locations (mentioned)</span>
-            <div id="sum-locations" class="confidence-value locations-list"></div>
-          </div>
-          <div class="field">
-            <span class="label">Incident type</span>
-            <span id="sum-incident-type" class="confidence-value"></span>
-          </div>
-          <div class="field">
-            <span class="label">People estimate</span>
-            <span id="sum-people" class="confidence-value"></span>
-          </div>
-          <div class="field">
-            <span class="label">Hazards</span>
-            <div id="sum-hazards" class="confidence-value locations-list"></div>
-          </div>
-          <h3 class="details-subsection">Transcripts / Callers</h3>
-          <div id="transcripts-section" class="transcripts-section hidden">
-            <div id="transcripts-list" class="transcripts-list"></div>
-          </div>
-          <button type="button" id="refresh-summary" class="secondary">Refresh</button>
-        </div>
-      </section>
-
-      <section class="panel map-panel">
-        <h2>Map</h2>
-        <p class="map-hint">Main marker shows incident type. Use &quot;Use my location&quot; then process a chunk, or &quot;Simulate locations&quot; for demo.</p>
-        <button type="button" id="simulate-locations" class="secondary">Simulate locations</button>
+    <main class="main dashboard-main">
+      <!-- Map first (above everything) -->
+      <section class="map-area">
         <div id="map" class="map-container"></div>
-      </section>
-
-      <section class="panel timeline-panel">
-        <h2>Timeline (audit log)</h2>
-        <div id="timeline-loading" class="loading">No timeline yet.</div>
-        <div id="timeline-content" class="timeline-content hidden">
-          <ul id="timeline-list"></ul>
+        <div class="map-toolbar">
+          <button type="button" id="simulate-incidents" class="btn-secondary">Simulate incidents</button>
+          <button type="button" id="simulate-locations" class="btn-secondary">Simulate locations</button>
         </div>
       </section>
+
+      <!-- Below map: incidents list + detail panel -->
+      <div class="dashboard-below">
+        <aside class="incidents-sidebar">
+          <div class="sidebar-header">
+            <h2>Incidents</h2>
+            <button type="button" id="refresh-incidents" class="btn-icon" title="Refresh list">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
+          </div>
+          <div id="incidents-loading" class="loading">Loading…</div>
+          <div id="incidents-cards" class="incidents-cards hidden"></div>
+          <div id="incidents-empty" class="empty-state hidden">No incidents yet. Use Call to report or simulate data.</div>
+        </aside>
+
+        <!-- Detail panel (right of list, below map) -->
+        <section class="detail-panel-inline">
+          <div class="detail-header">
+            <h2>Incident details</h2>
+          </div>
+          <div class="detail-body">
+            <div id="summary-loading" class="loading">Select an incident.</div>
+            <div id="summary-content" class="summary-content hidden">
+              <div class="field">
+                <span class="label">Incident ID</span>
+                <span id="sum-incident-id"></span>
+              </div>
+              <div class="field">
+                <span class="label">Last updated</span>
+                <span id="sum-last-updated"></span>
+              </div>
+              <div class="field">
+                <span class="label">Device location</span>
+                <span id="sum-device-location" class="confidence-value"></span>
+              </div>
+              <div class="field">
+                <span class="label">Locations</span>
+                <div id="sum-locations" class="confidence-value locations-list"></div>
+              </div>
+              <div class="field">
+                <span class="label">Incident type</span>
+                <span id="sum-incident-type" class="confidence-value"></span>
+              </div>
+              <div class="field">
+                <span class="label">People estimate</span>
+                <span id="sum-people" class="confidence-value"></span>
+              </div>
+              <div class="field">
+                <span class="label">Hazards</span>
+                <div id="sum-hazards" class="confidence-value locations-list"></div>
+              </div>
+              <h3 class="details-subsection">Transcripts / Callers</h3>
+              <div id="transcripts-section" class="transcripts-section hidden">
+                <div id="transcripts-list" class="transcripts-list"></div>
+              </div>
+              <h3 class="details-subsection">Timeline</h3>
+              <div id="timeline-loading" class="loading">No timeline yet.</div>
+              <div id="timeline-content" class="timeline-content hidden">
+                <ul id="timeline-list"></ul>
+              </div>
+              <button type="button" id="refresh-summary" class="btn-secondary">Refresh</button>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
+
+    <!-- Ingest panel (optional: add transcript from dashboard) -->
+    <div class="ingest-floating" id="ingest-floating">
+      <form id="chunk-form" class="ingest-form hidden">
+        <label for="chunk-text">Add transcript</label>
+        <textarea id="chunk-text" rows="2" placeholder="e.g. Fire on the third floor"></textarea>
+        <label class="checkbox-row">
+          <input type="checkbox" id="auto-cluster" checked> Auto-cluster
+        </label>
+        <input type="text" id="incident-id" value="incident-001" class="hidden">
+        <div id="incident-id-row" class="hidden"></div>
+        <div class="device-location-row">
+          <button type="button" id="use-my-location" class="btn-secondary small">Use my location</button>
+          <span id="device-location-status" class="device-status"></span>
+        </div>
+        <button type="submit" id="submit-chunk" class="btn-primary">Process</button>
+      </form>
+      <div id="chunk-result" class="result-box"></div>
+    </div>
+    <button type="button" class="fab" id="fab-add-text" title="Add transcript">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="app.js"></script>

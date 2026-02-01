@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Emergency — 999</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="call.css">
+</head>
+<body>
+  <div class="call-page-wrap">
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="call-app">
+    <!-- Status bar (iPhone-style) -->
+    <header class="status-bar">
+      <span class="status-time" id="status-time">9:41</span>
+      <div class="status-icons">
+        <span class="status-signal"></span>
+        <span class="status-wifi"></span>
+        <span class="status-battery"></span>
+      </div>
+    </header>
+
+    <!-- Main call UI -->
+    <main class="call-main">
+      <div class="call-header">
+        <p class="call-label">Emergency Services</p>
+        <h1 class="call-number">999</h1>
+        <p class="call-sub">United Kingdom</p>
+      </div>
+
+      <!-- Captions (what you're saying) - no scroll, last line visible -->
+      <div class="captions-wrap">
+        <p class="captions-line" id="captions-line" aria-live="polite"></p>
+        <p class="captions-interim" id="captions-interim" aria-live="polite"></p>
+      </div>
+
+      <!-- Action buttons: icons only -->
+      <div class="call-actions">
+        <button type="button" class="call-action-btn" id="action-messages" title="Add textual context" aria-label="Add text message">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        <button type="button" class="call-action-btn call-btn" id="action-call" title="Start call" aria-label="Call">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+        <button type="button" class="call-action-btn hangup-btn" id="action-hangup" disabled title="End call" aria-label="End call">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 1.79 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+      </div>
+    </main>
+      </div>
+    </div>
+  </div>
+
+    <!-- Messages modal: add textual context -->
+    <div class="modal-overlay" id="messages-modal" aria-hidden="true">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h2>Add text context</h2>
+          <button type="button" class="modal-close" id="messages-close" aria-label="Close">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <p class="modal-hint">Send a transcript snippet to the incident system (e.g. location, type of emergency).</p>
+        <textarea id="messages-text" rows="4" placeholder="e.g. There's a fire on the third floor, two people trapped."></textarea>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="messages-cancel">Cancel</button>
+          <button type="button" class="btn-primary" id="messages-send">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav to dashboard (outside frame) -->
+    <a href="index.html" class="nav-link nav-dashboard" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:50">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+  </div>
+  <script src="call.js"></script>
+</body>
+</html>

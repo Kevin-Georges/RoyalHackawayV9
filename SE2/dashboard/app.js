@@ -27,6 +27,8 @@
   const mapEl = document.getElementById("map");
   const useMyLocationBtn = document.getElementById("use-my-location");
   const deviceLocationStatus = document.getElementById("device-location-status");
+  const fabAddText = document.getElementById("fab-add-text");
+  const ingestFloating = document.getElementById("ingest-floating");
 
   var map = null;
   var mapMarkers = [];
@@ -144,6 +146,7 @@
         incidentsCards.querySelectorAll(".incident-card").forEach(function (c) { c.classList.remove("selected"); });
         card.classList.add("selected");
         if (incidentIdInput) incidentIdInput.value = id;
+        if (detailOverlay) detailOverlay.setAttribute("aria-hidden", "false");
         loadIncident(id).then(function (d) {
           if (d) {
             loadTimeline(id);
@@ -153,6 +156,22 @@
         });
       });
     });
+  }
+
+  if (fabAddText && ingestFloating) {
+    var chunkFormEl = document.getElementById("chunk-form");
+    fabAddText.addEventListener("click", function () {
+      ingestFloating.classList.toggle("visible");
+      if (chunkFormEl) chunkFormEl.classList.toggle("hidden", !ingestFloating.classList.contains("visible"));
+    });
+  }
+
+  var INCIDENT_PRIORITY = { fire: 1, medical: 2, assault: 3, "gas leak": 4, accident: 5, collapse: 6, flood: 7, overdose: 8, "break-in": 9, missing: 10, suicide: 11 };
+  function incidentSortKey(item) {
+    var type = (item.summary && item.summary.incident_type && item.summary.incident_type.value) ? String(item.summary.incident_type.value).toLowerCase() : "";
+    var priority = INCIDENT_PRIORITY[type] != null ? INCIDENT_PRIORITY[type] : 99;
+    var updated = (item.summary && item.summary.last_updated) ? item.summary.last_updated : "";
+    return priority + ":" + (updated ? "\x00" + updated : "");
   }
 
   async function loadIncidentsList() {
@@ -165,7 +184,9 @@
       const r = await fetch(url, { cache: "no-store", headers: { Pragma: "no-cache" } });
       if (!r.ok) throw new Error("Failed to load incidents");
       const data = await r.json();
-      var list = data.incidents || [];
+      var list = (data.incidents || []).slice().sort(function (a, b) {
+        return incidentSortKey(a).localeCompare(incidentSortKey(b));
+      });
       renderIncidentCards(list);
     } catch (e) {
       if (incidentsEmpty) {
@@ -575,13 +596,14 @@
     }
   });
 
-  // Live voice panel
+  // Live voice panel (only on pages that have voice UI, e.g. call.html has its own)
   var voiceStartBtn = document.getElementById("voice-start");
   var voiceStopBtn = document.getElementById("voice-stop");
   var voiceStatus = document.getElementById("voice-status");
   var voiceCallerEl = document.getElementById("voice-caller");
   var voiceLiveEl = document.getElementById("voice-live");
   var voiceTranscriptEl = document.getElementById("voice-transcript");
+  var hasVoicePanel = !!(voiceStartBtn && voiceStopBtn);
 
   var TARGET_SAMPLE_RATE = 16000;
 
@@ -628,7 +650,7 @@
     }
   }
 
-  voiceStartBtn.addEventListener("click", async function () {
+  if (hasVoicePanel) voiceStartBtn.addEventListener("click", async function () {
     if (voiceSocket && voiceSocket.readyState === 1) return;
     voiceStartBtn.disabled = true;
     voiceStopBtn.disabled = false;
@@ -768,7 +790,7 @@
     }
   });
 
-  voiceStopBtn.addEventListener("click", function () {
+  if (hasVoicePanel) voiceStopBtn.addEventListener("click", function () {
     if (!voiceSocket) return;
     if (voiceIncidentUpdatePending != null) {
       clearTimeout(voiceIncidentUpdatePending);
