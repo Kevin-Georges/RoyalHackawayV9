@@ -30,7 +30,7 @@
     </header>
 
     <main class="main dashboard-main">
-      <!-- Map first (above everything) -->
+      <!-- Map (left) – stays visible behind detail overlay when it slides out -->
       <section class="map-area">
         <div id="map" class="map-container"></div>
         <div class="map-toolbar">
@@ -39,71 +39,74 @@
         </div>
       </section>
 
-      <!-- Below map: incidents list + detail panel -->
-      <div class="dashboard-below">
-        <aside class="incidents-sidebar">
-          <div class="sidebar-header">
-            <h2>Incidents</h2>
-            <button type="button" id="refresh-incidents" class="btn-icon" title="Refresh list">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            </button>
-          </div>
-          <div id="incidents-loading" class="loading">Loading…</div>
-          <div id="incidents-cards" class="incidents-cards hidden"></div>
-          <div id="incidents-empty" class="empty-state hidden">No incidents yet. Use Call to report or simulate data.</div>
-        </aside>
-
-        <!-- Detail panel (right of list, below map) -->
-        <section class="detail-panel-inline">
-          <div class="detail-header">
-            <h2>Incident details</h2>
-          </div>
-          <div class="detail-body">
-            <div id="summary-loading" class="loading">Select an incident.</div>
-            <div id="summary-content" class="summary-content hidden">
-              <div class="field">
-                <span class="label">Incident ID</span>
-                <span id="sum-incident-id"></span>
-              </div>
-              <div class="field">
-                <span class="label">Last updated</span>
-                <span id="sum-last-updated"></span>
-              </div>
-              <div class="field">
-                <span class="label">Device location</span>
-                <span id="sum-device-location" class="confidence-value"></span>
-              </div>
-              <div class="field">
-                <span class="label">Locations</span>
-                <div id="sum-locations" class="confidence-value locations-list"></div>
-              </div>
-              <div class="field">
-                <span class="label">Incident type</span>
-                <span id="sum-incident-type" class="confidence-value"></span>
-              </div>
-              <div class="field">
-                <span class="label">People estimate</span>
-                <span id="sum-people" class="confidence-value"></span>
-              </div>
-              <div class="field">
-                <span class="label">Hazards</span>
-                <div id="sum-hazards" class="confidence-value locations-list"></div>
-              </div>
-              <h3 class="details-subsection">Transcripts / Callers</h3>
-              <div id="transcripts-section" class="transcripts-section hidden">
-                <div id="transcripts-list" class="transcripts-list"></div>
-              </div>
-              <h3 class="details-subsection">Timeline</h3>
-              <div id="timeline-loading" class="loading">No timeline yet.</div>
-              <div id="timeline-content" class="timeline-content hidden">
-                <ul id="timeline-list"></ul>
-              </div>
-              <button type="button" id="refresh-summary" class="btn-secondary">Refresh</button>
-            </div>
-          </div>
-        </section>
-      </div>
+      <aside class="incidents-sidebar">
+        <div class="sidebar-header">
+          <h2>Incidents</h2>
+          <button type="button" id="refresh-incidents" class="btn-icon" title="Refresh list">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+        </div>
+        <div id="incidents-loading" class="loading">Loading…</div>
+        <div id="incidents-cards" class="incidents-cards hidden"></div>
+        <div id="incidents-empty" class="empty-state hidden">No incidents yet. Use Call to report or simulate data.</div>
+      </aside>
     </main>
+
+    <!-- Detail overlay: slides from right, map stays visible behind -->
+    <div class="detail-overlay" id="detail-overlay" aria-hidden="true">
+      <div class="detail-backdrop" id="detail-backdrop"></div>
+      <div class="detail-panel">
+        <div class="detail-header">
+          <h2>Incident details</h2>
+          <button type="button" class="detail-close" id="detail-close" aria-label="Close">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="detail-body">
+          <div id="summary-loading" class="loading">Select an incident.</div>
+          <div id="summary-content" class="summary-content hidden">
+            <div class="field">
+              <span class="label">Incident ID</span>
+              <span id="sum-incident-id"></span>
+            </div>
+            <div class="field">
+              <span class="label">Last updated</span>
+              <span id="sum-last-updated"></span>
+            </div>
+            <div class="field">
+              <span class="label">Device location</span>
+              <span id="sum-device-location" class="confidence-value"></span>
+            </div>
+            <div class="field">
+              <span class="label">Locations</span>
+              <div id="sum-locations" class="confidence-value locations-list"></div>
+            </div>
+            <div class="field">
+              <span class="label">Incident type</span>
+              <span id="sum-incident-type" class="confidence-value"></span>
+            </div>
+            <div class="field">
+              <span class="label">People estimate</span>
+              <span id="sum-people" class="confidence-value"></span>
+            </div>
+            <div class="field">
+              <span class="label">Hazards</span>
+              <div id="sum-hazards" class="confidence-value locations-list"></div>
+            </div>
+            <h3 class="details-subsection">Transcripts / Callers</h3>
+            <div id="transcripts-section" class="transcripts-section hidden">
+              <div id="transcripts-list" class="transcripts-list"></div>
+            </div>
+            <h3 class="details-subsection">Timeline</h3>
+            <div id="timeline-loading" class="loading">No timeline yet.</div>
+            <div id="timeline-content" class="timeline-content hidden">
+              <ul id="timeline-list"></ul>
+            </div>
+            <button type="button" id="refresh-summary" class="btn-secondary">Refresh</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Ingest panel (optional: add transcript from dashboard) -->
     <div class="ingest-floating" id="ingest-floating">

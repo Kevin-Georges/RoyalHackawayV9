@@ -110,49 +110,41 @@ body {
   border-color: var(--danger);
 }
 
-/* Main: map on top, then incidents + detail below */
+/* Main: map (left) + incidents (right); detail overlay slides from right, map stays behind */
 .dashboard-main {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: 1fr;
   min-height: 0;
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
 }
 
-/* Map first (above details) */
+@media (max-width: 900px) {
+  .dashboard-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 300px auto;
+  }
+}
+
 .map-area {
-  flex-shrink: 0;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 1rem;
+  padding-right: 0.5rem;
 }
 
 .map-container {
-  height: 320px;
-  width: 100%;
+  flex: 1;
+  min-height: 280px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   transition: box-shadow 0.3s ease;
-}
-
-/* Below map: incidents list (left) + detail panel (right) */
-.dashboard-below {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  grid-template-rows: 1fr;
-  min-height: 0;
-  overflow: hidden;
-}
-
-@media (max-width: 900px) {
-  .dashboard-below {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
 }
 
 .map-container:hover {
@@ -166,10 +158,10 @@ body {
   flex-wrap: wrap;
 }
 
-/* Incidents sidebar (left below map) */
+/* Incidents sidebar (right) */
 .incidents-sidebar {
   background: var(--surface);
-  border-right: 1px solid var(--border);
+  border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -177,30 +169,91 @@ body {
   overflow: hidden;
 }
 
-/* Detail panel (right below map, inline) */
-.detail-panel-inline {
+/* Detail overlay: slides from right; map (and list) stay visible behind */
+.detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0.3s ease;
+}
+
+.detail-overlay[aria-hidden="false"] {
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.detail-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.25);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.detail-overlay[aria-hidden="false"] .detail-backdrop {
+  opacity: 1;
+}
+
+.detail-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  min-height: 0;
   overflow: hidden;
-  background: var(--bg);
+  z-index: 1;
 }
 
-.detail-panel-inline .detail-header {
-  flex-shrink: 0;
+.detail-overlay[aria-hidden="false"] .detail-panel {
+  transform: translateX(0);
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  flex-shrink: 0;
 }
 
-.detail-panel-inline .detail-header h2 {
+.detail-header h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 400;
   font-family: var(--font);
 }
 
-.detail-panel-inline .detail-body {
+.detail-close {
+  padding: 0.35rem;
+  background: none;
+  border: none;
+  border-radius: 0.5rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.detail-close:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.detail-close .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.detail-body {
   flex: 1;
   overflow-y: auto;
   padding: 1rem 1.25rem;

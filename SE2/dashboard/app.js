@@ -27,6 +27,9 @@
   const mapEl = document.getElementById("map");
   const useMyLocationBtn = document.getElementById("use-my-location");
   const deviceLocationStatus = document.getElementById("device-location-status");
+  const detailOverlay = document.getElementById("detail-overlay");
+  const detailClose = document.getElementById("detail-close");
+  const detailBackdrop = document.getElementById("detail-backdrop");
   const fabAddText = document.getElementById("fab-add-text");
   const ingestFloating = document.getElementById("ingest-floating");
 
@@ -158,6 +161,11 @@
     });
   }
 
+  function closeDetailOverlay() {
+    if (detailOverlay) detailOverlay.setAttribute("aria-hidden", "true");
+  }
+  if (detailClose) detailClose.addEventListener("click", closeDetailOverlay);
+  if (detailBackdrop) detailBackdrop.addEventListener("click", closeDetailOverlay);
   if (fabAddText && ingestFloating) {
     var chunkFormEl = document.getElementById("chunk-form");
     fabAddText.addEventListener("click", function () {
