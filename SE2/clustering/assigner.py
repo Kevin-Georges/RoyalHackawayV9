@@ -1,10 +1,17 @@
 """
 Combine embedding similarity + LLM same-incident score + time proximity
 into one match score. Assign new report to best incident or create new.
+
+Tunable via env (so different incidents don't get merged too often):
+- CLUSTER_THRESHOLD: min combined score to merge (default 0.65; higher = fewer merges).
+- CLUSTER_WEIGHTS: comma-separated embedding,llm,time,geo (e.g. 0.4,0.4,0.1,0.1 = rely more on semantic/LLM).
+- CLUSTER_MIN_EMBEDDING: optional min embedding similarity to merge (e.g. 0.4; avoids merging on time+geo only).
+- CLUSTER_MIN_LLM: optional min LLM same-incident score to merge (e.g. 0.45).
 """
 
 import logging
 import math
+import os
 import uuid
 
 from clustering.embedding import get_embedding
@@ -16,7 +23,58 @@ logger = logging.getLogger("incident_api.clustering.assigner")
 
 # Weights for combined score: embedding_sim, llm_score, time_score, geo_score (must sum to 1)
 DEFAULT_WEIGHTS = (0.35, 0.35, 0.15, 0.15)  # embedding, llm, time, geo
-DEFAULT_THRESHOLD = 0.55  # min combined score to assign to existing incident
+DEFAULT_THRESHOLD = 0.55  # fallback if env not set
+
+
+def _parse_weights(s: str | None) -> tuple[float, float, float, float] | None:
+    if not s or not s.strip():
+        return None
+    parts = [p.strip() for p in s.split(",") if p.strip()]
+    if len(parts) != 4:
+        return None
+    try:
+        w = tuple(float(x) for x in parts)
+        if abs(sum(w) - 1.0) > 0.01:
+            return None
+        return w
+    except ValueError:
+        return None
+
+
+def _cluster_threshold() -> float:
+    v = os.environ.get("CLUSTER_THRESHOLD")
+    if v is None or v.strip() == "":
+        return 0.65  # higher default so different incidents stay separate
+    try:
+        t = float(v.strip())
+        return max(0.0, min(1.0, t))
+    except ValueError:
+        return 0.65
+
+
+def _cluster_weights() -> tuple[float, float, float, float]:
+    w = _parse_weights(os.environ.get("CLUSTER_WEIGHTS"))
+    return w if w is not None else DEFAULT_WEIGHTS
+
+
+def _cluster_min_embedding() -> float | None:
+    v = os.environ.get("CLUSTER_MIN_EMBEDDING")
+    if v is None or v.strip() == "":
+        return None
+    try:
+        return max(0.0, min(1.0, float(v.strip())))
+    except ValueError:
+        return None
+
+
+def _cluster_min_llm() -> float | None:
+    v = os.environ.get("CLUSTER_MIN_LLM")
+    if v is None or v.strip() == "":
+        return None
+    try:
+        return max(0.0, min(1.0, float(v.strip())))
+    except ValueError:
+        return None
 
 
 def _cosine_sim(a: list[float], b: list[float]) -> float:
@@ -93,8 +151,10 @@ def find_best_incident(
     *,
     report_lat: float | None = None,
     report_lng: float | None = None,
-    weights: tuple[float, float, float, float] = DEFAULT_WEIGHTS,
-    threshold: float = DEFAULT_THRESHOLD,
+    weights: tuple[float, float, float, float] | None = None,
+    threshold: float | None = None,
+    min_embedding: float | None = None,
+    min_llm: float | None = None,
     use_embedding: bool = True,
     use_llm: bool = True,
     embedding_cache: dict[str, list[float]] | None = None,
@@ -104,9 +164,17 @@ def find_best_incident(
     incident_entries: list of (incident_id, state_dict, last_updated_iso).
     report_lat, report_lng: caller device location so "first floor" and "windsor building" from same spot cluster.
     embedding_cache: optional dict to read/write incident embeddings (avoids re-embedding).
+    threshold/weights/min_embedding/min_llm: if None, read from env (CLUSTER_*); else use passed values.
+    min_embedding/min_llm: if set, only merge when best candidate has both embedding_sim >= min_embedding
+    and llm_score >= min_llm (avoids merging different incidents that happen to be same time/place).
     """
     if not incident_entries:
         return None, 0.0
+
+    weights = weights if weights is not None else _cluster_weights()
+    threshold = threshold if threshold is not None else _cluster_threshold()
+    min_emb = min_embedding if min_embedding is not None else _cluster_min_embedding()
+    min_llm_val = min_llm if min_llm is not None else _cluster_min_llm()
 
     report_embedding = get_embedding(report_summary) if use_embedding else None
     if use_embedding and report_embedding is None:
@@ -114,6 +182,8 @@ def find_best_incident(
 
     best_id: str | None = None
     best_score = 0.0
+    best_emb_sim = 0.0
+    best_llm_s = 0.0
     cache = embedding_cache if embedding_cache is not None else {}
 
     for incident_id, state_dict, last_updated in incident_entries:
@@ -148,10 +218,18 @@ def find_best_incident(
         if score > best_score:
             best_score = score
             best_id = incident_id
+            best_emb_sim = emb_sim
+            best_llm_s = llm_s
 
-    if best_score >= threshold and best_id is not None:
-        return best_id, best_score
-    return None, best_score
+    if best_score < threshold or best_id is None:
+        return None, best_score
+    if min_emb is not None and best_emb_sim < min_emb:
+        logger.info("cluster skip: embedding_sim %.3f < CLUSTER_MIN_EMBEDDING %.3f", best_emb_sim, min_emb)
+        return None, best_score
+    if min_llm_val is not None and best_llm_s < min_llm_val:
+        logger.info("cluster skip: llm_score %.3f < CLUSTER_MIN_LLM %.3f", best_llm_s, min_llm_val)
+        return None, best_score
+    return best_id, best_score
 
 
 def new_incident_id() -> str:

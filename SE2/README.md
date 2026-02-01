@@ -55,7 +55,14 @@ Reports can be **clustered** into incidents so multiple calls form one incident 
 - **Time proximity**: Reports close in time score higher (same hour → 1.0, 6h → 0.8, 24h → 0.6, 7d → 0.3, else 0.1).
 - **Geo proximity**: When device lat/lng is sent with the chunk, distance to the incident's device/location is used (same spot → 1.0, within 200m → 0.9, 500m → 0.7, 1km → 0.5, 2km → 0.3, else 0.1). So reports from the same building cluster even if one says "first floor" and another "windsor building".
 
-Combined score = `0.35 * embedding_sim + 0.35 * llm_score + 0.15 * time_score + 0.15 * geo_score`. Send `device_lat` and `device_lng` with **POST /chunk** (dashboard requests location each time when auto-cluster is on). If the best score ≥ 0.55, the report is assigned to that incident; otherwise a new incident is created.
+Combined score = `0.35 * embedding_sim + 0.35 * llm_score + 0.15 * time_score + 0.15 * geo_score`. Send `device_lat` and `device_lng` with **POST /chunk** (dashboard requests location each time when auto-cluster is on). If the best score ≥ **CLUSTER_THRESHOLD** (default **0.65**), and optional semantic guards pass, the report is assigned to that incident; otherwise a new incident is created.
+
+**Tuning so different incidents stay separate:** Set in `.env` (no code change):
+
+- **CLUSTER_THRESHOLD** — Min combined score to merge (default `0.65`). Raise (e.g. `0.72`) to merge less often.
+- **CLUSTER_WEIGHTS** — Comma-separated `embedding,llm,time,geo` (e.g. `0.4,0.4,0.1,0.1`) to rely more on semantic/LLM and less on time/place.
+- **CLUSTER_MIN_EMBEDDING** — Optional: only merge if embedding similarity ≥ this (e.g. `0.4`). Avoids merging on time+geo alone.
+- **CLUSTER_MIN_LLM** — Optional: only merge if LLM same-incident score ≥ this (e.g. `0.45`). Requires `OPENAI_API_KEY`.
 
 ## API
 
