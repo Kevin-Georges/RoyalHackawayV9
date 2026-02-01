@@ -34,6 +34,9 @@
   var deviceLng = null;
   var voiceSocket = null;
   var voiceCallerId = null;
+  var voiceIncidentUpdatePending = null;
+  var voiceIncidentUpdateLastRun = 0;
+  var VOICE_INCIDENT_UPDATE_THROTTLE_MS = 400;
 
   function initMap() {
     if (map || !mapEl || typeof L === "undefined") return;
@@ -408,6 +411,11 @@
         chunkResult.className = "result-box error";
         return;
       }
+      if (data.skipped) {
+        chunkResult.textContent = "No incident content detected — chunk skipped. No incident created or updated.";
+        chunkResult.className = "result-box";
+        return;
+      }
       var msg = "Added " + (data.claims_added || 0) + " claim(s). Summary updated.";
       if (data.claims_added === 0 && data.summary && data.summary.timeline_count > 0) {
         msg = "No new claims from this chunk (extractor may have fallen back). Summary unchanged.";
@@ -423,7 +431,7 @@
         incidentIdInput.value = data.incident_id;
       }
       renderSummary(data.summary);
-      renderTimeline({ timeline: data.summary.timeline });
+      renderTimeline({ timeline: data.summary ? data.summary.timeline : [] });
       chunkText.value = "";
       loadIncidentsList().then(function () {
         var card = incidentsCards && incidentsCards.querySelector(".incident-card[data-incident-id=\"" + (data.incident_id || "") + "\"]");
@@ -656,17 +664,34 @@
           appendVoiceTranscript(data.transcript, data.isFinal);
         } else if (data.type === "incident_update") {
           if (data.incident_id && incidentIdInput) incidentIdInput.value = data.incident_id;
-          renderSummary(data.summary);
-          renderTimeline({ timeline: data.summary.timeline });
-          var incType = data.summary.incident_type && data.summary.incident_type.value ? data.summary.incident_type.value : null;
-          updateMap(data.summary.device_location, data.summary.locations || [], incType);
-          loadIncidentsList().then(function () {
-            var card = incidentsCards && incidentsCards.querySelector(".incident-card[data-incident-id=\"" + (data.incident_id || "") + "\"]");
-            if (card) {
-              incidentsCards.querySelectorAll(".incident-card").forEach(function (c) { c.classList.remove("selected"); });
-              card.classList.add("selected");
-            }
-          });
+          var payload = { incident_id: data.incident_id, summary: data.summary };
+          function runIncidentUpdate() {
+            voiceIncidentUpdateLastRun = Date.now();
+            voiceIncidentUpdatePending = null;
+            var d = payload;
+            if (!d || !d.summary) return;
+            renderSummary(d.summary);
+            renderTimeline({ timeline: d.summary.timeline });
+            var incType = d.summary.incident_type && d.summary.incident_type.value ? d.summary.incident_type.value : null;
+            updateMap(d.summary.device_location, d.summary.locations || [], incType);
+            loadIncidentsList().then(function () {
+              var card = incidentsCards && incidentsCards.querySelector(".incident-card[data-incident-id=\"" + (d.incident_id || "") + "\"]");
+              if (card) {
+                incidentsCards.querySelectorAll(".incident-card").forEach(function (c) { c.classList.remove("selected"); });
+                card.classList.add("selected");
+              }
+            });
+          }
+          var now = Date.now();
+          if (voiceIncidentUpdatePending != null) {
+            clearTimeout(voiceIncidentUpdatePending);
+          }
+          var delay = 0;
+          var elapsed = now - voiceIncidentUpdateLastRun;
+          if (elapsed < VOICE_INCIDENT_UPDATE_THROTTLE_MS) {
+            delay = VOICE_INCIDENT_UPDATE_THROTTLE_MS - elapsed;
+          }
+          voiceIncidentUpdatePending = setTimeout(runIncidentUpdate, delay);
         } else if (data.type === "error") {
           console.log("[TRACE dashboard] Error from server:", data.message);
           voiceStatus.textContent = "Error: " + (data.message || "Unknown");
@@ -695,6 +720,10 @@
 
   voiceStopBtn.addEventListener("click", function () {
     if (!voiceSocket) return;
+    if (voiceIncidentUpdatePending != null) {
+      clearTimeout(voiceIncidentUpdatePending);
+      voiceIncidentUpdatePending = null;
+    }
     if (voiceSocket._processor) voiceSocket._processor.disconnect();
     if (voiceSocket._input) voiceSocket._input.disconnect();
     if (voiceSocket._stream) voiceSocket._stream.getTracks().forEach(function (t) {

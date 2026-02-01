@@ -20,9 +20,18 @@ Uncertainty-aware incident summary from emergency call transcript stream. No ass
 
 ## Run
 
+**API (incident engine):**
 ```bash
 python run_api.py
 ```
+
+**Real-time voice (Python, recommended):** Run from the SE2 directory with `DEEPGRAM_API_KEY` set (e.g. in `.env`). Clients (dashboard, root `index.html`) connect to `ws://localhost:8080`.
+```bash
+# From SE2 directory
+python voice_server.py
+# or: uvicorn voice_server:app --host 0.0.0.0 --port 8080
+```
+Same WebSocket protocol as the legacy Node `server.js`; no front-end changes needed.
 
 ## Tests
 
@@ -59,7 +68,7 @@ Combined score = `0.35 * embedding_sim + 0.35 * llm_score + 0.15 * time_score + 
 ## Dashboard
 
 - Submit transcript chunks; view current summary and timeline.
-- **Live voice**: Start recording to add transcripts via speech. Every ~3 sentences are sent to the semantic engine; incidents update in real time. Each session (Start→Stop) = one caller. Requires the voice server (see root `server.js`) running on port 8080.
+- **Live voice**: Start recording to add transcripts via speech. Every ~3 sentences are sent to the semantic engine; incidents update in real time. Each session (Start→Stop) = one caller. Requires the **Python voice server** (recommended) or the root Node `server.js` running on port 8080.
 - Summary shows location, incident type, people estimate, hazards — each with confidence.
 - Timeline is an append-only audit log of every extracted claim.
 

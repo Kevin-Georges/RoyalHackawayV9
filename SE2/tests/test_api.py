@@ -41,6 +41,18 @@ class TestChunk:
         r = client.post("/chunk", json={"text": "", "incident_id": "inc-1"})
         assert r.status_code == 400
 
+    def test_chunk_skipped_when_no_incident_content(self, client):
+        """Location-only or routine text should be skipped — no incident created."""
+        r = client.post("/chunk", json={"text": "I'm on the first floor, just checking in", "incident_id": "inc-1", "auto_cluster": True})
+        assert r.status_code == 200
+        data = r.json()
+        assert data["skipped"] is True
+        assert data["claims_added"] == 0
+        assert data["incident_id"] == ""
+        # No new incidents should exist
+        list_r = client.get("/incidents")
+        assert list_r.json().get("incident_ids", []) == []
+
     def test_chunk_with_device_location(self, client):
         r = client.post(
             "/chunk",

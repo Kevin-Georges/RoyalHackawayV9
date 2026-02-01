@@ -111,6 +111,14 @@ def _boost_repeated_mention(chunk_text: str, state_before: dict, claims: list[di
     return scores
 
 
+def _has_incident_content(claims: list[dict]) -> bool:
+    """True if claims contain incident_type or hazard — indicates this chunk describes an incident."""
+    if not claims:
+        return False
+    incident_types = {"incident_type", "hazard"}
+    return any(c.get("claim_type") in incident_types for c in claims)
+
+
 def _people_value_in_chunk(chunk_lower: str, value: str) -> bool:
     """Check if people count value (e.g. 2-3) is mentioned in chunk (e.g. 'two or three')."""
     v = str(value).lower()
@@ -160,6 +168,7 @@ class ChunkResponse(BaseModel):
     claims_added: int
     cluster_score: Optional[float] = None  # set when auto_cluster=True (combined match score)
     cluster_new: Optional[bool] = None  # True if this report created a new incident
+    skipped: bool = False  # True when chunk has no incident-related content (no incident created/updated)
 
 
 # -----------------------------------------------------------------------------
@@ -190,17 +199,35 @@ def process_chunk(body: ChunkRequest):
             headers=NO_CACHE_HEADERS,
         )
 
+    # Extract claims first — skip if chunk has no incident-related content (no incident_type, no hazard)
+    extract_fn = get_extractor()
+    extractor_name = "openai" if extract_fn is openai_extract_claims else "regex"
+    claims = extract_fn(body.text, context=None)
+
+    if not claims and extractor_name == "openai":
+        logger.warning("openai returned 0 claims; falling back to regex")
+        claims = regex_extract_claims(body.text, context=None)
+        extractor_name = "regex (fallback)"
+
+    if not _has_incident_content(claims):
+        logger.info("chunk skipped: no incident content (incident_type/hazard) claims_count=%d", len(claims))
+        resp_content = ChunkResponse(
+            incident_id="",
+            summary={},
+            claims_added=0,
+            skipped=True,
+        ).model_dump()
+        return JSONResponse(content=resp_content, headers=NO_CACHE_HEADERS)
+
+    logger.info("extraction extractor=%s claims_count=%d claim_types=%s", extractor_name, len(claims), [c.get("claim_type") for c in claims])
+
     incident_id = body.incident_id or "incident-001"
 
     if body.auto_cluster:
         # Assign to best-matching incident or create new (embedding + LLM + time)
         from datetime import datetime
-        extract_fn = get_extractor()
-        quick_claims = extract_fn(body.text, context=None)
-        if not quick_claims and extract_fn is openai_extract_claims:
-            quick_claims = regex_extract_claims(body.text, context=None)
         report_summary = claims_to_summary_text(
-            quick_claims,
+            claims,
             chunk_preview=text[:200],
             device_lat=float(body.device_lat) if body.device_lat is not None else None,
             device_lng=float(body.device_lng) if body.device_lng is not None else None,
@@ -238,18 +265,6 @@ def process_chunk(body: ChunkRequest):
     if body.device_lat is not None and body.device_lng is not None:
         set_device_location(incident, float(body.device_lat), float(body.device_lng))
         logger.info("device_location set lat=%s lng=%s", body.device_lat, body.device_lng)
-
-    extract_fn = get_extractor()
-    extractor_name = "openai" if extract_fn is openai_extract_claims else "regex"
-    context = get_incident_state_dict(incident)
-    claims = extract_fn(body.text, context=context)
-
-    if not claims and extractor_name == "openai":
-        logger.warning("openai returned 0 claims; falling back to regex")
-        claims = regex_extract_claims(body.text, context=None)
-        extractor_name = "regex (fallback)"
-
-    logger.info("extraction extractor=%s claims_count=%d claim_types=%s", extractor_name, len(claims), [c.get("claim_type") for c in claims])
 
     # Inject caller_id/caller_info into claims for timeline grouping (voice sessions)
     caller_id = body.caller_id
