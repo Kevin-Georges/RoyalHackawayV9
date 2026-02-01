@@ -133,7 +133,11 @@
   var mapInstance = null;
   function renderMap(points) {
     var el = document.getElementById("map");
-    if (!el || typeof L === "undefined") return;
+    if (!el) return;
+    if (typeof L === "undefined") {
+      el.innerHTML = "<p class='muted' style='padding:1rem'>Map unavailable (Leaflet not loaded).</p>";
+      return;
+    }
     if (mapInstance) {
       mapInstance.remove();
       mapInstance = null;
@@ -182,8 +186,12 @@
     }
     el.innerHTML = data.slice(0, 10).map(function (r) {
       var snap = r.snapshot;
+      if (typeof snap === "string") {
+        try { snap = JSON.parse(snap); } catch (e) { snap = null; }
+      }
       var typeVal = snap && snap.incident_type && snap.incident_type.value ? snap.incident_type.value : "—";
-      var preview = typeVal + (snap && snap.last_updated ? " · " + String(snap.last_updated).slice(0, 16) : "");
+      var timeStr = (snap && snap.last_updated) ? String(snap.last_updated).slice(0, 16) : (r.created_at ? String(r.created_at).slice(0, 16) : "");
+      var preview = typeVal + (timeStr ? " · " + timeStr : "");
       return '<div class="item"><div class="incident-id">' + escapeHtml(r.incident_id || "") + '</div><div class="preview">' + escapeHtml(preview) + '</div></div>';
     }).join("");
   }

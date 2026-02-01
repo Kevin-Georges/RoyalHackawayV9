@@ -235,12 +235,19 @@ def get_recent_snapshots(conn, limit: int = 20) -> list[dict[str, Any]]:
     for r in rows:
         s = _serialize(r)
         if "snapshot" in s and s["snapshot"] is not None:
-            if hasattr(s["snapshot"], "decode"):
+            snap = s["snapshot"]
+            if isinstance(snap, str):
                 try:
-                    s["snapshot"] = json.loads(s["snapshot"])
+                    s["snapshot"] = json.loads(snap)
                 except Exception:
-                    s["snapshot"] = str(s["snapshot"])
-            s["snapshot"] = _serialize_value(s["snapshot"])
+                    s["snapshot"] = None
+            elif hasattr(snap, "decode"):
+                try:
+                    s["snapshot"] = json.loads(snap.decode())
+                except Exception:
+                    s["snapshot"] = None
+            if isinstance(s["snapshot"], (dict, list)):
+                s["snapshot"] = _serialize_value(s["snapshot"])
         out.append(s)
     return out
 
@@ -292,7 +299,7 @@ def run_all_analytics(conn) -> dict[str, Any]:
     """Run all queries and return one payload for the analytics dashboard."""
     return {
         "kpis": get_kpis(conn),
-        "incidents_over_time": get_incidents_over_time(conn),
+        "incidents_over_time": get_incidents_over_time(conn, trunc="day"),
         "by_incident_type": get_by_incident_type(conn),
         "clustering": get_clustering_stats(conn),
         "timeline_by_type": get_timeline_volume_by_type(conn),
