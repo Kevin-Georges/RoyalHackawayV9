@@ -30,6 +30,16 @@ from clustering.assigner import (
     new_incident_id,
 )
 
+try:
+    from analytics.snowflake_sink import sink_incident_after_chunk, _get_conn as snowflake_get_conn, _snowflake_configured
+    from analytics.snowflake_queries import run_all_analytics
+except ImportError:
+    def sink_incident_after_chunk(*args, **kwargs):  # noqa: E302
+        pass
+    snowflake_get_conn = None
+    _snowflake_configured = lambda: False
+    run_all_analytics = None
+
 load_dotenv(override=True)
 
 # -----------------------------------------------------------------------------
@@ -160,6 +170,7 @@ class ChunkRequest(BaseModel):
     auto_cluster: bool = False  # if True, assign to best-matching incident or create new (embedding + LLM + time)
     caller_id: Optional[str] = None  # unique per voice session (start→stop); groups multiple chunks from same caller
     caller_info: Optional[dict] = None  # optional: started_at, label, etc. for display
+    occurred_at: Optional[str] = None  # optional ISO timestamp for demo/backfill; used by Snowflake sink for created_at
 
 
 class ChunkResponse(BaseModel):
@@ -292,6 +303,26 @@ def process_chunk(body: ChunkRequest):
 
     logger.info("chunk applied incident_id=%s claims_added=%d timeline_len=%d", incident_id, claims_added, n_after)
 
+    # Optional Snowflake analytics sink (no-op if SNOWFLAKE_* not set)
+    try:
+        timeline_new = [e.to_dict() for e in incident.timeline[-claims_added:]] if claims_added else []
+        sink_incident_after_chunk(
+            incident_id,
+            summary,
+            timeline_new,
+            {
+                "chunk_preview": text[:500] if text else "",
+                "cluster_score": cluster_score,
+                "cluster_new": cluster_new,
+                "device_lat": float(body.device_lat) if body.device_lat is not None else None,
+                "device_lng": float(body.device_lng) if body.device_lng is not None else None,
+                "caller_id": body.caller_id,
+                "occurred_at": body.occurred_at,
+            },
+        )
+    except Exception as sink_err:
+        logger.debug("analytics sink skip: %s", sink_err)
+
     resp_content = ChunkResponse(
         incident_id=incident_id,
         summary=summary,
@@ -365,6 +396,22 @@ def health():
         content={"status": "ok", "extractor": "openai" if os.environ.get("OPENAI_API_KEY") else "regex"},
         headers=NO_CACHE_HEADERS,
     )
+
+
+# -----------------------------------------------------------------------------
+# Snowflake analytics API (for analytics dashboard page)
+# -----------------------------------------------------------------------------
+@app.get("/analytics")
+def analytics():
+    """Run all Snowflake analytics queries (KPIs, time series, by type, clustering, map points, recent)."""
+    if not _snowflake_configured() or snowflake_get_conn is None or run_all_analytics is None:
+        raise HTTPException(status_code=503, detail="Snowflake not configured (set SNOWFLAKE_ACCOUNT, USER, PASSWORD)")
+    conn = snowflake_get_conn()
+    try:
+        data = run_all_analytics(conn)
+        return JSONResponse(content=data, headers=NO_CACHE_HEADERS)
+    finally:
+        conn.close()
 
 
 # -----------------------------------------------------------------------------

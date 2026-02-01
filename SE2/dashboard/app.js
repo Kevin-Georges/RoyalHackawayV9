@@ -479,6 +479,56 @@
     });
   });
 
+  var simulateIncidentsBtn = document.getElementById("simulate-incidents");
+  function demoOccurredAt(i, total) {
+    var now = new Date();
+    var daysAgo = Math.floor((i * 1.3) % 10);
+    var hourOffset = (i * 3) % 24;
+    var d = new Date(now);
+    d.setUTCDate(d.getUTCDate() - daysAgo);
+    d.setUTCHours(d.getUTCHours() - hourOffset, d.getUTCMinutes(), d.getUTCSeconds(), 0);
+    return d.toISOString().slice(0, 19) + "Z";
+  }
+  var DEMO_CHUNKS = [
+    { text: "There's a fire on the third floor of the east wing.", device_lat: 51.5074, device_lng: -0.1278 },
+    { text: "Smoke is spreading. We need evacuation.", device_lat: 51.5074, device_lng: -0.1278 },
+    { text: "At least two people are trapped near the stairwell.", device_lat: 51.5074, device_lng: -0.1278 },
+    { text: "Medical emergency in the main lobby. Someone collapsed.", device_lat: 51.515, device_lng: -0.142 },
+    { text: "We think it might be a heart attack. Need ambulance.", device_lat: 51.515, device_lng: -0.142 },
+    { text: "Fire in building B, second floor. Multiple people inside.", device_lat: 51.52, device_lng: -0.11 },
+    { text: "Report of an assault near the car park. One person injured.", device_lat: 51.50, device_lng: -0.14 },
+    { text: "Security is on the way. Suspect may have left the area.", device_lat: 51.50, device_lng: -0.14 },
+    { text: "Smell of gas on the first floor. Possible gas leak.", device_lat: 51.508, device_lng: -0.13 },
+    { text: "We've evacuated that corridor. Fire brigade en route.", device_lat: 51.508, device_lng: -0.13 },
+    { text: "Update: fire on third floor is under control but building still evacuating.", device_lat: 51.5074, device_lng: -0.1278 },
+    { text: "Ambulance has arrived at the lobby for the medical.", device_lat: 51.515, device_lng: -0.142 },
+    { text: "Gas leak isolated. First floor clear.", device_lat: 51.508, device_lng: -0.13 },
+  ];
+  if (simulateIncidentsBtn) {
+    simulateIncidentsBtn.addEventListener("click", async function () {
+      simulateIncidentsBtn.disabled = true;
+      if (chunkResult) chunkResult.textContent = "Simulating " + DEMO_CHUNKS.length + " chunks…";
+      var ok = 0;
+      for (var i = 0; i < DEMO_CHUNKS.length; i++) {
+        var chunk = DEMO_CHUNKS[i];
+        var payload = { text: chunk.text, auto_cluster: true, incident_id: "", caller_id: "demo-seed", caller_info: { label: "Demo seed" }, occurred_at: demoOccurredAt(i, DEMO_CHUNKS.length) };
+        if (chunk.device_lat != null && chunk.device_lng != null) {
+          payload.device_lat = chunk.device_lat;
+          payload.device_lng = chunk.device_lng;
+        }
+        try {
+          var r = await fetch(apiUrl("/chunk"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), cache: "no-store" });
+          if (r.ok) ok++;
+        } catch (e) {}
+        await new Promise(function (res) { setTimeout(res, 250); });
+      }
+      if (chunkResult) chunkResult.textContent = "Simulated " + ok + "/" + DEMO_CHUNKS.length + " chunks. Refresh incidents or open Snowflake Analytics.";
+      if (chunkResult) chunkResult.className = "result-box success";
+      simulateIncidentsBtn.disabled = false;
+      loadIncidentsList();
+    });
+  }
+
   simulateLocationsBtn.addEventListener("click", async function () {
     const id = incidentIdInput.value.trim() || "incident-001";
     simulateLocationsBtn.disabled = true;

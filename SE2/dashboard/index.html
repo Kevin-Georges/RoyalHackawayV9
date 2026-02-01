@@ -11,7 +11,7 @@
   <div class="app">
     <header class="header">
       <h1>Incident Summary</h1>
-      <p class="subtitle">Uncertainty-aware • Evidence only • No asserted facts</p>
+      <p class="subtitle">Uncertainty-aware • Evidence only • No asserted facts <a href="analytics.html" class="link-analytics">Snowflake Analytics →</a></p>
       <div class="api-status" id="api-status">Checking API…</div>
     </header>
 
@@ -31,6 +31,8 @@
 
       <section class="panel ingest-panel">
         <h2>Ingest transcript chunk</h2>
+        <p class="panel-hint" style="margin-bottom:0.5rem">Or <strong>Simulate incidents</strong> to seed demo data (fire, medical, assault, gas leak) with locations for the map and Snowflake analytics.</p>
+        <button type="button" id="simulate-incidents" class="secondary" style="margin-bottom:1rem">Simulate incidents</button>
         <form id="chunk-form">
           <label class="checkbox-row">
             <input type="checkbox" id="auto-cluster" title="Assign to best-matching incident or create new (embedding + LLM + time)" checked>

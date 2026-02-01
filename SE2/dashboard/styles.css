@@ -47,6 +47,16 @@ body {
   font-size: 0.9rem;
 }
 
+.subtitle .link-analytics {
+  color: var(--accent);
+  text-decoration: none;
+  margin-left: 0.5rem;
+}
+
+.subtitle .link-analytics:hover {
+  text-decoration: underline;
+}
+
 .api-status {
   font-size: 0.85rem;
   padding: 0.35rem 0.6rem;

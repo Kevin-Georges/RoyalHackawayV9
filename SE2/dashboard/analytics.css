@@ -1,0 +1,133 @@
+/* Analytics dashboard: Snowflake-powered */
+
+.analytics-app {
+  max-width: 1200px;
+}
+
+.analytics-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.link-back {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.link-back:hover {
+  text-decoration: underline;
+}
+
+.kpi-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.kpi-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.kpi-card .value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.kpi-card .label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.chart-wrap {
+  position: relative;
+  height: 280px;
+}
+
+.chart-panel h2,
+.map-panel h2 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem 0;
+  color: var(--muted);
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel.half {
+  padding: 1rem;
+}
+
+.stats-block {
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+.stats-block .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.list-block {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.list-block .item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.list-block .item .value {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.recent-list .item {
+  padding: 0.6rem 0;
+}
+
+.recent-list .item .incident-id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.recent-list .item .preview {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.analytics-map {
+  height: 360px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}

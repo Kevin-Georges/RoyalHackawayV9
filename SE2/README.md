@@ -72,6 +72,18 @@ Combined score = `0.35 * embedding_sim + 0.35 * llm_score + 0.15 * time_score + 
 - **GET /incidents** — List incident IDs.
 - **GET /health** — Status and extractor type (openai vs regex).
 
+## Snowflake analytics (optional)
+
+When `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, and `SNOWFLAKE_PASSWORD` (and optionally `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_SCHEMA`) are set in `.env`, every **POST /chunk** update is written to Snowflake for analytics:
+
+- **incident_snapshots** — One row per chunk (incident_id, last_updated, snapshot JSON, created_at). Use for incident state history and trends.
+- **timeline_events** — One row per new timeline event (incident_id, event_time, claim_type, value, confidence, source_text, caller_id). Use for claim volume and audit analytics.
+- **chunk_events** — One row per chunk (incident_id, chunk_preview, cluster_score, cluster_new, device_lat, device_lng, caller_id, ingested_at). Use for volume, clustering effectiveness, and device/location analytics.
+
+Tables are created automatically (CREATE TABLE IF NOT EXISTS). Run SQL in Snowflake for incidents by type, by time, by location; clustering rates; timeline growth; etc. No-op if Snowflake env is not set; install `snowflake-connector-python` only if you use this.
+
+**Analytics dashboard:** Open **http://localhost:8000/dashboard/analytics.html** for a full Snowflake-powered analytics page: KPIs, incidents over time (DATE_TRUNC), by incident type (GET_PATH on VARIANT), clustering stats, timeline volume, hour-over-hour trend (LAG), incident map (device_location from VARIANT), top locations, recent snapshots. Data is fetched from **GET /analytics**.
+
 ## Dashboard
 
 - Submit transcript chunks; view current summary and timeline.
