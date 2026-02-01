@@ -39,6 +39,8 @@ def _append_timeline(incident: Incident, claim: dict) -> None:
         value=claim["value"],
         confidence=claim["confidence"],
         source_text=claim["source_text"],
+        caller_id=claim.get("caller_id"),
+        caller_info=claim.get("caller_info"),
     ))
 
 

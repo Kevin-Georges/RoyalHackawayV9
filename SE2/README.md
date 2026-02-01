@@ -59,6 +59,7 @@ Combined score = `0.35 * embedding_sim + 0.35 * llm_score + 0.15 * time_score + 
 ## Dashboard
 
 - Submit transcript chunks; view current summary and timeline.
+- **Live voice**: Start recording to add transcripts via speech. Every ~3 sentences are sent to the semantic engine; incidents update in real time. Each session (Start→Stop) = one caller. Requires the voice server (see root `server.js`) running on port 8080.
 - Summary shows location, incident type, people estimate, hazards — each with confidence.
 - Timeline is an append-only audit log of every extracted claim.
 

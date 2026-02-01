@@ -16,6 +16,19 @@
     </header>
 
     <main class="main">
+      <section class="panel voice-panel">
+        <h2>Live voice transcription</h2>
+        <p class="panel-hint">Start recording to add transcripts via speech. Every ~3 sentences are sent to the semantic engine and incidents update in real time. Each session (Start→Stop) = one caller.</p>
+        <div class="voice-controls">
+          <button type="button" id="voice-start" class="primary">Start recording</button>
+          <button type="button" id="voice-stop" class="secondary" disabled>Stop</button>
+          <span id="voice-status" class="voice-status">Idle</span>
+          <span id="voice-caller" class="voice-caller hidden"></span>
+        </div>
+        <div id="voice-live" class="voice-live" aria-live="polite"></div>
+        <div id="voice-transcript" class="voice-transcript"></div>
+      </section>
+
       <section class="panel ingest-panel">
         <h2>Ingest transcript chunk</h2>
         <form id="chunk-form">
@@ -51,6 +64,7 @@
 
       <section class="panel summary-panel">
         <h2>Incident details</h2>
+        <p class="panel-hint">Click an incident card above to see summary, transcripts, and timeline.</p>
         <div id="summary-loading" class="loading">Click an incident above or process a chunk.</div>
         <div id="summary-content" class="summary-content hidden">
           <div class="field">
@@ -81,13 +95,17 @@
             <span class="label">Hazards</span>
             <div id="sum-hazards" class="confidence-value locations-list"></div>
           </div>
+          <h3 class="details-subsection">Transcripts / Callers</h3>
+          <div id="transcripts-section" class="transcripts-section hidden">
+            <div id="transcripts-list" class="transcripts-list"></div>
+          </div>
           <button type="button" id="refresh-summary" class="secondary">Refresh</button>
         </div>
       </section>
 
       <section class="panel map-panel">
-        <h2>Map (device + locations)</h2>
-        <p class="map-hint">Device location = caller position. Use &quot;Use my location&quot; then process a chunk, or &quot;Simulate locations&quot; for demo.</p>
+        <h2>Map</h2>
+        <p class="map-hint">Main marker shows incident type. Use &quot;Use my location&quot; then process a chunk, or &quot;Simulate locations&quot; for demo.</p>
         <button type="button" id="simulate-locations" class="secondary">Simulate locations</button>
         <div id="map" class="map-container"></div>
       </section>

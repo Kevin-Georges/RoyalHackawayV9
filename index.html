@@ -5,14 +5,17 @@
   <style>
     body { font-family: Arial; background:#0f172a; color:white; padding:40px }
     button { padding:10px 20px; margin-right:10px; font-size:16px }
-    #transcript { margin-top:20px; line-height:1.6 }
+    #live-line { min-height:1.4em; margin-top:12px; color:#38bdf8; line-height:1.5 }
+    #transcript { margin-top:8px; line-height:1.6 }
   </style>
 </head>
 <body>
   <h1>Live Speech Transcription</h1>
+  <p style="font-size:0.9rem; color:#94a3b8; margin-bottom:1rem">Voice feeds into SE2 incident engine every ~3 sentences. <a href="http://localhost:8000/dashboard/" style="color:#58a6ff">Open SE2 Dashboard</a> for full view.</p>
   <button id="start">Start</button>
   <button id="stop">Stop</button>
   <div id="status">Idle</div>
+  <div id="live-line" aria-live="polite"></div>
   <div id="transcript"></div>
 
 <script>
@@ -23,35 +26,68 @@ let input;
 let globalStream;
 
 const transcriptEl = document.getElementById("transcript");
+const liveLineEl = document.getElementById("live-line");
 const statusEl = document.getElementById("status");
 
 function appendTranscript(text, isFinal) {
-  const span = document.createElement("div");
-  span.textContent = text;
-  span.style.color = isFinal ? "white" : "#38bdf8";
-  transcriptEl.appendChild(span);
+  console.log("[TRACE index] appendTranscript " + (isFinal ? "FINAL" : "interim") + " \"" + (text || "").slice(0, 50) + "\"");
+  if (isFinal) {
+    const span = document.createElement("div");
+    span.textContent = text;
+    span.style.color = "white";
+    transcriptEl.appendChild(span);
+    if (liveLineEl) liveLineEl.textContent = "";
+  } else {
+    if (liveLineEl) liveLineEl.textContent = text || "";
+  }
 }
+
+const TARGET_SAMPLE_RATE = 16000;
 
 document.getElementById("start").onclick = async () => {
   statusEl.textContent = "Connecting...";
+  console.log("[TRACE index] Connecting to ws://localhost:8080");
   socket = new WebSocket("ws://localhost:8080");
 
-  socket.onopen = () => statusEl.textContent = "Recording...";
+  socket.onopen = () => {
+    console.log("[TRACE index] WebSocket OPEN");
+    statusEl.textContent = "Recording...";
+  };
   socket.onmessage = (msg) => {
-    const data = JSON.parse(msg.data);
-    appendTranscript(data.transcript, data.isFinal);
+    try {
+      const data = JSON.parse(msg.data);
+      console.log("[TRACE index] Message type=" + (data.type || "") + " transcript=" + (data.transcript ? "\"" + data.transcript.slice(0, 40) + "\"" : "—") + " isFinal=" + data.isFinal);
+      if (data.type === "session") return;
+      if (data.type === "transcript" && data.transcript) {
+        appendTranscript(data.transcript, data.isFinal);
+      } else if (data.transcript) {
+        appendTranscript(data.transcript, data.isFinal);
+      }
+    } catch (e) {
+      console.log("[TRACE index] Message parse failed", e.message);
+    }
   };
 
   globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  audioContext = new AudioContext();
+  const sourceRate = audioContext.sampleRate;
+  console.log("[TRACE index] AudioContext sampleRate=" + sourceRate + " resample=" + (sourceRate !== TARGET_SAMPLE_RATE));
 
-  audioContext = new AudioContext({ sampleRate: 16000 });
   input = audioContext.createMediaStreamSource(globalStream);
   processor = audioContext.createScriptProcessor(4096, 1, 1);
-
+  let sendCount = 0;
   processor.onaudioprocess = (e) => {
     const inputData = e.inputBuffer.getChannelData(0);
-    const pcmData = convertFloat32ToInt16(inputData);
-    if (socket.readyState === 1) socket.send(pcmData);
+    const resampled =
+      sourceRate === TARGET_SAMPLE_RATE
+        ? inputData
+        : resampleTo16k(inputData, sourceRate);
+    const pcmData = convertFloat32ToInt16(resampled);
+    if (socket.readyState === 1) {
+      socket.send(pcmData);
+      sendCount++;
+      if (sendCount <= 3 || sendCount % 100 === 0) console.log("[TRACE index] Sent audio #" + sendCount + " bytes=" + pcmData.byteLength);
+    }
   };
 
   input.connect(processor);
@@ -64,12 +100,29 @@ document.getElementById("stop").onclick = () => {
   globalStream.getTracks().forEach(t => t.stop());
   socket.close();
   statusEl.textContent = "Stopped";
+  if (liveLineEl) liveLineEl.textContent = "";
 };
 
+function resampleTo16k(input, sourceRate) {
+  const ratio = sourceRate / TARGET_SAMPLE_RATE;
+  const outLen = Math.floor(input.length / ratio);
+  const out = new Float32Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const idx = i * ratio;
+    const lo = Math.floor(idx);
+    const hi = Math.min(lo + 1, input.length - 1);
+    const frac = idx - lo;
+    out[i] = input[lo] * (1 - frac) + input[hi] * frac;
+  }
+  return out;
+}
+
 function convertFloat32ToInt16(buffer) {
-  let l = buffer.length;
-  const buf = new Int16Array(l);
-  while (l--) buf[l] = Math.min(1, buffer[l]) * 0x7fff;
+  const buf = new Int16Array(buffer.length);
+  for (let i = 0; i < buffer.length; i++) {
+    const s = Math.max(-1, Math.min(1, buffer[i]));
+    buf[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
   return buf.buffer;
 }
 </script>

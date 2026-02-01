@@ -322,13 +322,46 @@ button.secondary {
   color: var(--muted);
 }
 
-.device-marker .device-dot {
-  width: 16px;
-  height: 16px;
-  background: var(--accent);
-  border: 2px solid var(--text);
-  border-radius: 50%;
-  display: block;
+.map-popup-header {
+  font-size: 1rem;
+}
+
+.details-subsection {
+  margin: 1.25rem 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.transcripts-section {
+  margin-bottom: 1rem;
+}
+
+.transcripts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.caller-card {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.caller-header {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.caller-transcript {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .timeline-content ul {
@@ -373,6 +406,67 @@ button.secondary {
   display: block;
   margin-top: 0.25rem;
   font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Live voice panel */
+.voice-panel .voice-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.voice-panel button.primary {
+  background: var(--success);
+  color: var(--bg);
+}
+
+.voice-panel button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.voice-status {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.voice-caller {
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.voice-live {
+  min-height: 1.4em;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.voice-transcript {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.voice-transcript .transcript-final {
+  color: var(--text);
+}
+
+.voice-transcript .transcript-interim {
   color: var(--muted);
   font-style: italic;
 }

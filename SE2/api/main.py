@@ -150,6 +150,8 @@ class ChunkRequest(BaseModel):
     device_lat: Optional[float] = None
     device_lng: Optional[float] = None
     auto_cluster: bool = False  # if True, assign to best-matching incident or create new (embedding + LLM + time)
+    caller_id: Optional[str] = None  # unique per voice session (start→stop); groups multiple chunks from same caller
+    caller_info: Optional[dict] = None  # optional: started_at, label, etc. for display
 
 
 class ChunkResponse(BaseModel):
@@ -248,6 +250,16 @@ def process_chunk(body: ChunkRequest):
         extractor_name = "regex (fallback)"
 
     logger.info("extraction extractor=%s claims_count=%d claim_types=%s", extractor_name, len(claims), [c.get("claim_type") for c in claims])
+
+    # Inject caller_id/caller_info into claims for timeline grouping (voice sessions)
+    caller_id = body.caller_id
+    caller_info = body.caller_info
+    if caller_id or caller_info:
+        for c in claims:
+            if caller_id:
+                c["caller_id"] = caller_id
+            if caller_info:
+                c["caller_info"] = caller_info
 
     state_before = get_incident_state_dict(incident)
     judge_scores = judge_support_scores(state_before, body.text, claims) if claims else {}

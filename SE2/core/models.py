@@ -43,15 +43,22 @@ class TimelineEvent:
     value: str
     confidence: float
     source_text: str
+    caller_id: Optional[str] = None  # groups all chunks from same caller (start→stop session)
+    caller_info: Optional[dict] = None  # optional metadata: started_at, device_location, etc.
 
     def to_dict(self):
-        return {
+        d = {
             "time": self.time,
             "claim_type": self.claim_type,
             "value": self.value,
             "confidence": round(self.confidence, 4),
             "source_text": self.source_text,
         }
+        if self.caller_id is not None:
+            d["caller_id"] = self.caller_id
+        if self.caller_info is not None:
+            d["caller_info"] = self.caller_info
+        return d
 
 
 @dataclass
